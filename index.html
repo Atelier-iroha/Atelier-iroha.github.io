@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Atelier">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#f5f3ef">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<title>Atelier</title>
+<style>
+  :root {
+    --bg: #f5f3ef;
+    --card: #ffffff;
+    --ink: #2b2b2b;
+    --accent: #4a6fa5;
+    --accent-soft: #dfe8f3;
+    --line: #ddd8d0;
+    --danger: #c0554d;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Hiragino Kaku Gothic ProN", sans-serif;
+    padding-bottom: 80px;
+  }
+
+  header {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    background: var(--card);
+    border-bottom: 1px solid var(--line);
+    padding: env(safe-area-inset-top) 16px 0;
+  }
+  .header-inner {
+    max-width: 900px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 52px;
+  }
+  h1 { font-size: 17px; margin: 0; font-weight: 600; letter-spacing: 0.05em; }
+  nav { display: flex; gap: 4px; }
+  .tab {
+    border: none;
+    background: transparent;
+    font-size: 15px;
+    padding: 8px 16px;
+    border-radius: 8px;
+    color: var(--ink);
+    cursor: pointer;
+  }
+  .tab.active { background: var(--accent); color: #fff; font-weight: 600; }
+
+  main { max-width: 900px; margin: 0 auto; padding: 16px; }
+  .page { display: none; }
+  .page.visible { display: block; }
+
+  section.block {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 14px;
+    margin-bottom: 18px;
+  }
+  .block-title {
+    font-size: 14px;
+    font-weight: 600;
+    margin: 0 0 10px;
+    color: #6b675f;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .block-title .count { font-weight: 400; font-size: 12px; }
+
+  /* ---- 1段目: レファレンス画像 ---- */
+  .thumb-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 8px;
+  }
+  @media (min-width: 700px) {
+    .thumb-grid { grid-template-columns: repeat(10, 1fr); }
+  }
+  .thumb {
+    position: relative;
+    aspect-ratio: 1 / 1;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px dashed var(--line);
+    background: var(--bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+  }
+  .thumb.filled { border-style: solid; }
+  .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .thumb .plus { color: #b8b2a7; font-size: 22px; font-weight: 300; }
+  .thumb .del {
+    position: absolute;
+    top: 2px; right: 2px;
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(0,0,0,0.55);
+    color: #fff;
+    font-size: 13px;
+    line-height: 22px;
+    padding: 0;
+    cursor: pointer;
+  }
+
+  /* ---- 2段目: スケッチ ---- */
+  .toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+  .swatch {
+    width: 30px; height: 30px;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    cursor: pointer;
+    padding: 0;
+  }
+  .swatch.selected { border-color: var(--accent); box-shadow: 0 0 0 2px #fff inset; }
+  .tool-btn {
+    border: 1px solid var(--line);
+    background: var(--card);
+    border-radius: 8px;
+    padding: 6px 12px;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  .tool-btn.selected { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .tool-btn.arrow { font-size: 18px; line-height: 1; padding: 5px 14px; }
+  .size-wrap { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #6b675f; }
+  input[type="range"] { width: 90px; }
+  #sketch-canvas {
+    width: 100%;
+    height: auto;
+    display: block;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: #fff;
+    touch-action: none;
+    cursor: crosshair;
+  }
+
+  /* ---- 3段目: メモ ---- */
+  textarea {
+    width: 100%;
+    min-height: 130px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 12px;
+    font-size: 15px;
+    font-family: inherit;
+    resize: vertical;
+    background: #fff;
+    color: var(--ink);
+  }
+  textarea:focus { outline: 2px solid var(--accent-soft); border-color: var(--accent); }
+  .memo-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 8px;
+  }
+  .char-count { font-size: 12px; color: #8a857b; }
+  .char-count.over { color: var(--danger); }
+
+  .action-row { display: flex; gap: 10px; justify-content: flex-end; }
+  .btn {
+    border: none;
+    border-radius: 10px;
+    padding: 12px 24px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-ghost { background: transparent; color: #6b675f; border: 1px solid var(--line); }
+
+  /* ---- メニュー(ポートフォリオ) ---- */
+  .portfolio {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+  @media (min-width: 700px) {
+    .portfolio { grid-template-columns: 1fr 1fr; }
+  }
+  .work-card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    overflow: hidden;
+  }
+  .work-card img {
+    width: 100%;
+    display: block;
+    border-bottom: 1px solid var(--line);
+    background: #fff;
+  }
+  .work-body { padding: 12px 14px; }
+  .work-date { font-size: 11px; color: #8a857b; margin-bottom: 6px; }
+  .work-memo { font-size: 14px; line-height: 1.7; white-space: pre-wrap; word-break: break-word; margin: 0; }
+  .work-actions { display: flex; justify-content: flex-end; padding: 0 14px 12px; }
+  .work-del {
+    border: none; background: transparent;
+    color: var(--danger); font-size: 13px; cursor: pointer; padding: 4px 8px;
+  }
+  .empty-note {
+    text-align: center;
+    color: #8a857b;
+    font-size: 14px;
+    padding: 60px 20px;
+    line-height: 1.8;
+  }
+
+  /* ---- ライトボックス ---- */
+  #lightbox {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.85);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    padding: 20px;
+  }
+  #lightbox.open { display: flex; }
+  #lightbox img { max-width: 100%; max-height: 100%; border-radius: 8px; }
+
+  /* ---- トースト ---- */
+  #toast {
+    position: fixed;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--ink);
+    color: #fff;
+    padding: 10px 22px;
+    border-radius: 20px;
+    font-size: 14px;
+    opacity: 0;
+    transition: opacity 0.25s, transform 0.25s;
+    pointer-events: none;
+    z-index: 200;
+  }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <h1>Atelier</h1>
+    <nav>
+      <button class="tab active" id="tab-main" onclick="showPage('main')">メイン</button>
+      <button class="tab" id="tab-menu" onclick="showPage('menu')">メニュー</button>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <!-- ============ メイン ============ -->
+  <div class="page visible" id="page-main">
+
+    <section class="block">
+      <p class="block-title">レファレンス画像 <span class="count" id="ref-count">0 / 20</span></p>
+      <div class="thumb-grid" id="thumb-grid"></div>
+      <input type="file" id="file-input" accept="image/*" multiple hidden>
+    </section>
+
+    <section class="block">
+      <p class="block-title">アイデアスケッチ</p>
+      <div class="toolbar">
+        <button class="swatch selected" style="background:#2b2b2b" data-color="#2b2b2b" aria-label="黒"></button>
+        <button class="swatch" style="background:#c0554d" data-color="#c0554d" aria-label="赤"></button>
+        <button class="swatch" style="background:#4a6fa5" data-color="#4a6fa5" aria-label="青"></button>
+        <button class="swatch" style="background:#5a8a5e" data-color="#5a8a5e" aria-label="緑"></button>
+        <button class="tool-btn" id="eraser-btn">消しゴム</button>
+        <div class="size-wrap">太さ <input type="range" id="pen-size" min="1" max="24" value="3"></div>
+        <button class="tool-btn arrow" id="undo-btn" aria-label="一段階元に戻す" title="一段階元に戻す">↩︎</button>
+        <button class="tool-btn arrow" id="redo-btn" aria-label="やり直す" title="やり直す">↪︎</button>
+      </div>
+      <canvas id="sketch-canvas"></canvas>
+    </section>
+
+    <section class="block">
+      <p class="block-title">メモ・説明</p>
+      <textarea id="memo" maxlength="500" placeholder="アイデアの説明やメモを入力（500文字まで）"></textarea>
+      <div class="memo-footer">
+        <span class="char-count" id="char-count">0 / 500</span>
+      </div>
+    </section>
+
+    <div class="action-row">
+      <button class="btn btn-ghost" id="new-btn">新規（クリア）</button>
+      <button class="btn btn-primary" id="save-btn">メニューに保存</button>
+    </div>
+  </div>
+
+  <!-- ============ メニュー ============ -->
+  <div class="page" id="page-menu">
+    <div class="portfolio" id="portfolio"></div>
+  </div>
+</main>
+
+<div id="lightbox" onclick="this.classList.remove('open')"><img id="lightbox-img" alt=""></div>
+<div id="toast"></div>
+
+<script>
+'use strict';
+const MAX_REFS = 20;
+
+/* ================= IndexedDB ================= */
+let db;
+const dbReady = new Promise((resolve, reject) => {
+  const req = indexedDB.open('ideaSketchApp', 1);
+  req.onupgradeneeded = () => {
+    const d = req.result;
+    d.createObjectStore('refs', { keyPath: 'id', autoIncrement: true });
+    d.createObjectStore('works', { keyPath: 'id', autoIncrement: true });
+  };
+  req.onsuccess = () => { db = req.result; resolve(); };
+  req.onerror = () => reject(req.error);
+});
+
+function tx(store, mode) {
+  return db.transaction(store, mode).objectStore(store);
+}
+function getAll(store) {
+  return new Promise((res, rej) => {
+    const r = tx(store, 'readonly').getAll();
+    r.onsuccess = () => res(r.result);
+    r.onerror = () => rej(r.error);
+  });
+}
+function put(store, value) {
+  return new Promise((res, rej) => {
+    const r = tx(store, 'readwrite').put(value);
+    r.onsuccess = () => res(r.result);
+    r.onerror = () => rej(r.error);
+  });
+}
+function del(store, key) {
+  return new Promise((res, rej) => {
+    const r = tx(store, 'readwrite').delete(key);
+    r.onsuccess = () => res();
+    r.onerror = () => rej(r.error);
+  });
+}
+
+/* ================= ページ切替 ================= */
+function showPage(name) {
+  document.getElementById('page-main').classList.toggle('visible', name === 'main');
+  document.getElementById('page-menu').classList.toggle('visible', name === 'menu');
+  document.getElementById('tab-main').classList.toggle('active', name === 'main');
+  document.getElementById('tab-menu').classList.toggle('active', name === 'menu');
+  if (name === 'menu') renderPortfolio();
+  window.scrollTo(0, 0);
+}
+
+/* ================= トースト ================= */
+let toastTimer;
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+/* ================= レファレンス画像 ================= */
+const thumbGrid = document.getElementById('thumb-grid');
+const fileInput = document.getElementById('file-input');
+let refs = [];
+
+function shrinkImage(file, maxSide = 900) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      const scale = Math.min(1, maxSide / Math.max(img.width, img.height));
+      const c = document.createElement('canvas');
+      c.width = Math.round(img.width * scale);
+      c.height = Math.round(img.height * scale);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url);
+      resolve(c.toDataURL('image/jpeg', 0.85));
+    };
+    img.onerror = reject;
+    img.src = url;
+  });
+}
+
+async function addFiles(files) {
+  const room = MAX_REFS - refs.length;
+  const list = Array.from(files).slice(0, room);
+  if (files.length > room) toast(`画像は最大${MAX_REFS}枚までです`);
+  for (const f of list) {
+    if (!f.type.startsWith('image/')) continue;
+    const dataUrl = await shrinkImage(f);
+    const id = await put('refs', { dataUrl });
+    refs.push({ id, dataUrl });
+  }
+  renderRefs();
+}
+
+function renderRefs() {
+  thumbGrid.innerHTML = '';
+  refs.forEach(ref => {
+    const cell = document.createElement('div');
+    cell.className = 'thumb filled';
+    const img = document.createElement('img');
+    img.src = ref.dataUrl;
+    img.alt = 'レファレンス画像';
+    img.onclick = () => {
+      document.getElementById('lightbox-img').src = ref.dataUrl;
+      document.getElementById('lightbox').classList.add('open');
+    };
+    const delBtn = document.createElement('button');
+    delBtn.className = 'del';
+    delBtn.textContent = '×';
+    delBtn.onclick = async (e) => {
+      e.stopPropagation();
+      await del('refs', ref.id);
+      refs = refs.filter(r => r.id !== ref.id);
+      renderRefs();
+    };
+    cell.append(img, delBtn);
+    thumbGrid.appendChild(cell);
+  });
+  // 空きスロット（最低1つ、1段目10枠が埋まるまでは10枠表示）
+  const minSlots = refs.length < 10 ? 10 : Math.min(refs.length + 1, MAX_REFS);
+  for (let i = refs.length; i < minSlots; i++) {
+    const cell = document.createElement('div');
+    cell.className = 'thumb';
+    cell.innerHTML = '<span class="plus">＋</span>';
+    cell.onclick = () => fileInput.click();
+    thumbGrid.appendChild(cell);
+  }
+  document.getElementById('ref-count').textContent = `${refs.length} / ${MAX_REFS}`;
+}
+
+fileInput.addEventListener('change', () => {
+  if (fileInput.files.length) addFiles(fileInput.files);
+  fileInput.value = '';
+});
+
+/* ================= スケッチキャンバス ================= */
+const canvas = document.getElementById('sketch-canvas');
+const ctx = canvas.getContext('2d');
+const ASPECT = 0.66; // 高さ = 幅 × 0.66
+let penColor = '#2b2b2b';
+let penSize = 3;
+let erasing = false;
+let drawing = false;
+let undoStack = [];
+let redoStack = [];
+
+function setupCanvas() {
+  const cssWidth = canvas.parentElement.clientWidth - 2;
+  const cssHeight = Math.round(cssWidth * ASPECT);
+  const dpr = window.devicePixelRatio || 1;
+  const snapshot = canvas.width > 0 ? canvas.toDataURL() : null;
+  canvas.style.height = cssHeight + 'px';
+  canvas.width = Math.round(cssWidth * dpr);
+  canvas.height = Math.round(cssHeight * dpr);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  if (snapshot) {
+    const img = new Image();
+    img.onload = () => ctx.drawImage(img, 0, 0, cssWidth, cssHeight);
+    img.src = snapshot;
+  }
+}
+
+function canvasPos(e) {
+  const rect = canvas.getBoundingClientRect();
+  return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+}
+
+canvas.addEventListener('pointerdown', (e) => {
+  e.preventDefault();
+  canvas.setPointerCapture(e.pointerId);
+  drawing = true;
+  if (undoStack.length >= 30) undoStack.shift();
+  undoStack.push(canvas.toDataURL());
+  redoStack = [];
+  const p = canvasPos(e);
+  ctx.beginPath();
+  ctx.moveTo(p.x, p.y);
+  ctx.lineTo(p.x + 0.01, p.y + 0.01);
+  applyStroke();
+});
+canvas.addEventListener('pointermove', (e) => {
+  if (!drawing) return;
+  const p = canvasPos(e);
+  ctx.lineTo(p.x, p.y);
+  applyStroke();
+});
+function endStroke() { drawing = false; }
+canvas.addEventListener('pointerup', endStroke);
+canvas.addEventListener('pointercancel', endStroke);
+
+function applyStroke() {
+  ctx.globalCompositeOperation = erasing ? 'destination-out' : 'source-over';
+  ctx.strokeStyle = penColor;
+  ctx.lineWidth = erasing ? penSize * 4 : penSize;
+  ctx.stroke();
+}
+
+document.querySelectorAll('.swatch').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.swatch').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    penColor = btn.dataset.color;
+    erasing = false;
+    document.getElementById('eraser-btn').classList.remove('selected');
+  });
+});
+document.getElementById('eraser-btn').addEventListener('click', function () {
+  erasing = !erasing;
+  this.classList.toggle('selected', erasing);
+});
+document.getElementById('pen-size').addEventListener('input', function () {
+  penSize = Number(this.value);
+});
+function restoreSnapshot(dataUrl) {
+  const img = new Image();
+  img.onload = () => {
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    ctx.restore();
+  };
+  img.src = dataUrl;
+}
+document.getElementById('undo-btn').addEventListener('click', () => {
+  if (!undoStack.length) return;
+  redoStack.push(canvas.toDataURL());
+  restoreSnapshot(undoStack.pop());
+});
+document.getElementById('redo-btn').addEventListener('click', () => {
+  if (!redoStack.length) return;
+  undoStack.push(canvas.toDataURL());
+  restoreSnapshot(redoStack.pop());
+});
+
+let resizeTimer;
+window.addEventListener('resize', () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(setupCanvas, 200);
+});
+
+/* ================= メモ ================= */
+const memo = document.getElementById('memo');
+const charCount = document.getElementById('char-count');
+memo.addEventListener('input', () => {
+  charCount.textContent = `${memo.value.length} / 500`;
+  charCount.classList.toggle('over', memo.value.length >= 500);
+});
+
+/* ================= 保存・新規 ================= */
+function canvasIsBlank() {
+  const blank = document.createElement('canvas');
+  blank.width = canvas.width;
+  blank.height = canvas.height;
+  return canvas.toDataURL() === blank.toDataURL();
+}
+
+document.getElementById('save-btn').addEventListener('click', async () => {
+  if (canvasIsBlank() && !memo.value.trim()) {
+    toast('スケッチかメモを入れてから保存してください');
+    return;
+  }
+  // 白背景で合成して保存
+  const out = document.createElement('canvas');
+  out.width = canvas.width;
+  out.height = canvas.height;
+  const octx = out.getContext('2d');
+  octx.fillStyle = '#ffffff';
+  octx.fillRect(0, 0, out.width, out.height);
+  octx.drawImage(canvas, 0, 0);
+  await put('works', {
+    image: out.toDataURL('image/png'),
+    memo: memo.value,
+    date: new Date().toISOString()
+  });
+  toast('メニューに保存しました');
+});
+
+document.getElementById('new-btn').addEventListener('click', () => {
+  ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.restore();
+  undoStack = [];
+  redoStack = [];
+  memo.value = '';
+  charCount.textContent = '0 / 500';
+  charCount.classList.remove('over');
+  toast('新規スケッチを開始');
+});
+
+/* ================= ポートフォリオ ================= */
+async function renderPortfolio() {
+  const works = (await getAll('works')).sort((a, b) => b.date.localeCompare(a.date));
+  const wrap = document.getElementById('portfolio');
+  wrap.innerHTML = '';
+  if (!works.length) {
+    wrap.innerHTML = '<div class="empty-note">まだ保存されたスケッチがありません。<br>メインページでスケッチを描いて「メニューに保存」を押してください。</div>';
+    return;
+  }
+  works.forEach(w => {
+    const card = document.createElement('div');
+    card.className = 'work-card';
+    const img = document.createElement('img');
+    img.src = w.image;
+    img.alt = 'アイデアスケッチ';
+    img.onclick = () => {
+      document.getElementById('lightbox-img').src = w.image;
+      document.getElementById('lightbox').classList.add('open');
+    };
+    const body = document.createElement('div');
+    body.className = 'work-body';
+    const d = new Date(w.date);
+    const dateEl = document.createElement('div');
+    dateEl.className = 'work-date';
+    dateEl.textContent = `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+    const memoEl = document.createElement('p');
+    memoEl.className = 'work-memo';
+    memoEl.textContent = w.memo || '（メモなし）';
+    body.append(dateEl, memoEl);
+    const actions = document.createElement('div');
+    actions.className = 'work-actions';
+    const delBtn = document.createElement('button');
+    delBtn.className = 'work-del';
+    delBtn.textContent = '削除';
+    delBtn.onclick = async () => {
+      if (!confirm('このスケッチを削除しますか？')) return;
+      await del('works', w.id);
+      renderPortfolio();
+    };
+    actions.appendChild(delBtn);
+    card.append(img, body, actions);
+    wrap.appendChild(card);
+  });
+}
+
+/* ================= 起動 ================= */
+(async () => {
+  await dbReady;
+  refs = await getAll('refs');
+  renderRefs();
+  setupCanvas();
+})();
+
+/* ================= Service Worker 登録（オフライン化） ================= */
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  });
+}
+</script>
+</body>
+</html>
