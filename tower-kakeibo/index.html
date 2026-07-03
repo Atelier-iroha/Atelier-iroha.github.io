@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>タワー家計簿</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="タワー家計簿">
+<meta name="theme-color" content="#0a1030">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DotGothic16&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<main id="pages">
+
+  <!-- ========== PAGE 1 : メイン（ゲーム画面） ========== -->
+  <section class="page" id="page-main">
+    <div id="scene-wrap">
+      <canvas id="scene" width="360" height="600"></canvas>
+      <div id="hud">
+        <div id="hud-top">
+          <button class="nav-btn" id="prev-month">◀</button>
+          <div id="hud-month-block">
+            <div id="hud-month">2026年7月</div>
+            <div id="hud-tower">スカイツリー</div>
+          </div>
+          <button class="nav-btn" id="next-month">▶</button>
+        </div>
+        <button id="btn-settings" aria-label="目標金額の設定">⚙</button>
+        <div id="hud-bottom">
+          <div id="hp-label"><span>TOWER HP</span><span id="hud-remain">¥200,000</span></div>
+          <div id="hp-bar"><div id="hp-fill"></div></div>
+          <div id="hud-spent">つかった金額 ¥0 / ¥200,000</div>
+        </div>
+        <div id="gameover" class="hidden">
+          <div id="gameover-text">GAME OVER</div>
+          <div id="gameover-sub"></div>
+        </div>
+        <div id="clear-badge" class="hidden">CLEAR!</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== PAGE 2 : 入力・グラフ ========== -->
+  <section class="page" id="page-input">
+    <h2 class="page-title">📷 レシート入力</h2>
+    <div class="ocr-buttons">
+      <button id="btn-camera" class="big-btn">📷 レシートをさつえい</button>
+      <button id="btn-manual" class="sub-btn">✏️ 手入力する</button>
+    </div>
+    <input type="file" id="cam-input" accept="image/*" capture="environment" hidden>
+
+    <h3 class="sec-title" id="chart-title">今月のカテゴリー</h3>
+    <div id="chart-box">
+      <svg id="donut" viewBox="0 0 200 200"></svg>
+      <div id="chart-center">
+        <div id="chart-total">¥0</div>
+        <div class="small">合計</div>
+      </div>
+    </div>
+    <div id="legend"></div>
+
+    <h3 class="sec-title">今月の記録</h3>
+    <div id="record-list"></div>
+  </section>
+
+  <!-- ========== PAGE 3 : アーカイブ ========== -->
+  <section class="page" id="page-archive">
+    <h2 class="page-title">📚 アーカイブ</h2>
+    <div id="archive-list"></div>
+    <div class="archive-tools">
+      <button id="btn-export" class="sub-btn">💾 バックアップ保存</button>
+      <button id="btn-import" class="sub-btn">📂 バックアップ読込</button>
+      <input type="file" id="import-input" accept=".json" hidden>
+    </div>
+  </section>
+
+</main>
+
+<!-- ページインジケータ -->
+<div id="dots"><span class="dot active"></span><span class="dot"></span><span class="dot"></span></div>
+
+<!-- フローティングカメラボタン -->
+<button id="fab-camera" aria-label="レシートをさつえい">📷</button>
+
+<!-- 目標金額（タワー）の設定 -->
+<div id="settings-overlay" class="overlay hidden">
+  <div class="panel">
+    <h3>🗼 目標金額の設定</h3>
+    <p class="settings-note">1ヶ月ぶんのタワーの高さ（予算）です。使った金額がこれを超えると GAME OVER になります。</p>
+    <label>目標金額（円）
+      <input type="number" id="s-budget" inputmode="numeric" min="1000" step="1000" placeholder="200000">
+    </label>
+    <div id="budget-presets">
+      <button class="preset-btn" data-v="100000">10万</button>
+      <button class="preset-btn" data-v="150000">15万</button>
+      <button class="preset-btn" data-v="200000">20万</button>
+      <button class="preset-btn" data-v="250000">25万</button>
+      <button class="preset-btn" data-v="300000">30万</button>
+    </div>
+    <div class="panel-btns">
+      <button id="s-cancel" class="sub-btn">やめる</button>
+      <button id="s-save" class="big-btn">きめる</button>
+    </div>
+  </div>
+</div>
+
+<!-- OCR処理中オーバーレイ -->
+<div id="ocr-overlay" class="overlay hidden">
+  <div class="panel">
+    <div class="loading-tower">🗼</div>
+    <div id="ocr-status">レシートを よみとり中...</div>
+    <div id="ocr-progress-bar"><div id="ocr-progress-fill"></div></div>
+    <button id="ocr-cancel" class="sub-btn">キャンセル</button>
+  </div>
+</div>
+
+<!-- 確認・編集フォーム -->
+<div id="confirm-overlay" class="overlay hidden">
+  <div class="panel">
+    <h3 id="confirm-title">よみとり結果のかくにん</h3>
+    <label>日にち<input type="date" id="f-date"></label>
+    <label>お店の名前<input type="text" id="f-store" placeholder="お店の名前"></label>
+    <label>金額（円）<input type="number" id="f-amount" inputmode="numeric" placeholder="0"></label>
+    <label>決済方法
+      <select id="f-payment">
+        <option>現金</option>
+        <option>クレジット</option>
+        <option>電子マネー</option>
+        <option>QRコード</option>
+        <option>その他</option>
+      </select>
+    </label>
+    <label>カテゴリー
+      <input type="text" id="f-category" list="cat-list" placeholder="例: 食費">
+      <datalist id="cat-list"></datalist>
+    </label>
+    <details id="raw-details"><summary>よみとった全文</summary><pre id="f-raw"></pre></details>
+    <div class="panel-btns">
+      <button id="f-cancel" class="sub-btn">やめる</button>
+      <button id="f-save" class="big-btn">ほぞんする</button>
+    </div>
+  </div>
+</div>
+
+<script src="towers.js"></script>
+<script src="app.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js" defer></script>
+</body>
+</html>
